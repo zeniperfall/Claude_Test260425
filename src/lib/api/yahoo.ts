@@ -1,5 +1,5 @@
 import "server-only";
-import yahooFinanceImport from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import type { Candle, Financials, Quote, SymbolInfo } from "@/lib/types";
 
 // yahoo-finance2 v3 ships a Proxy default export whose method types collapse
@@ -21,7 +21,7 @@ type YFLoose = {
     opts: Record<string, unknown>,
   ) => Promise<Record<string, Record<string, unknown> | undefined>>;
 };
-const yf = yahooFinanceImport as unknown as YFLoose;
+const yf = new (YahooFinance as unknown as new () => YFLoose)();
 
 try {
   yf.suppressNotices?.(["yahooSurvey", "ripHistorical"]);
