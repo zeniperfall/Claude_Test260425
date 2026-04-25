@@ -6,6 +6,7 @@ import type { Candle, Financials, Quote, SymbolInfo } from "@/lib/types";
 // to `never` under strict TS. Cast to a permissive shape for our usage.
 type YFLoose = {
   suppressNotices?: (notices: string[]) => void;
+  setGlobalConfig?: (config: Record<string, unknown>) => void;
   quote: (sym: string) => Promise<Record<string, unknown>>;
   search: (
     q: string,
@@ -24,6 +25,15 @@ const yf = yahooFinanceImport as unknown as YFLoose;
 
 try {
   yf.suppressNotices?.(["yahooSurvey", "ripHistorical"]);
+} catch {
+  // noop
+}
+// Disable schema validation — Yahoo often returns extra/missing fields
+// that crash the strict validator and cause silent failures in some regions.
+try {
+  yf.setGlobalConfig?.({
+    validation: { logErrors: false, logOptionsErrors: false },
+  });
 } catch {
   // noop
 }
@@ -54,7 +64,8 @@ export async function yahooQuote(symbol: string): Promise<Quote | null> {
       marketCap: num(q.marketCap),
       currency: str(q.currency),
     };
-  } catch {
+  } catch (err) {
+    console.error("[yahoo]", err);
     return null;
   }
 }
@@ -85,7 +96,8 @@ export async function yahooSearch(query: string): Promise<SymbolInfo[]> {
           exchange,
         } as SymbolInfo;
       });
-  } catch {
+  } catch (err) {
+    console.error("[yahoo]", err);
     return [];
   }
 }
@@ -117,7 +129,8 @@ export async function yahooCandles(
         close: num(c.close)!,
         volume: num(c.volume),
       }));
-  } catch {
+  } catch (err) {
+    console.error("[yahoo]", err);
     return [];
   }
 }
@@ -151,7 +164,8 @@ export async function yahooFinancials(symbol: string): Promise<Financials | null
       industry: str(profile.industry),
       description: str(profile.longBusinessSummary),
     };
-  } catch {
+  } catch (err) {
+    console.error("[yahoo]", err);
     return null;
   }
 }
