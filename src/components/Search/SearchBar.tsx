@@ -89,7 +89,6 @@ export function SearchBar() {
           className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--text-secondary)] min-w-0"
           aria-label="종목 검색"
           aria-autocomplete="list"
-          aria-expanded={open}
         />
         {query && (
           <button
