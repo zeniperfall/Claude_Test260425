@@ -23,17 +23,17 @@ export function AlertsPanel() {
     if (!selected) return;
     const num = parseFloat(target);
     if (Number.isNaN(num) || num <= 0) return;
-    // Synchronous state mutations first so React batches them — this keeps
-    // the "추가" button's DOM identity stable during Playwright clicks
-    // (and is also a tiny perf win for human users).
     addAlert({
       symbol: selected.symbol,
       name: selected.name,
       target: num,
       condition,
     });
-    setTarget("");
-    // Permission check can lag — fire and forget.
+    // Defer the input clear to a microtask so React commits the addAlert
+    // state change before the "추가" button's disabled prop flips. Otherwise
+    // the button can detach mid-click in Playwright (and very briefly in
+    // real browsers under heavy GC).
+    Promise.resolve().then(() => setTarget(""));
     ensureNotificationPermission().then(setPermGranted);
   }
 
@@ -67,7 +67,7 @@ export function AlertsPanel() {
         />
         <button
           onClick={handleAdd}
-          disabled={!selected || !target}
+          disabled={!selected}
           className="px-2.5 py-1 text-xs rounded bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
         >
           추가
