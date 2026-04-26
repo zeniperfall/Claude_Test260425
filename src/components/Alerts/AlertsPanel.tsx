@@ -19,12 +19,13 @@ export function AlertsPanel() {
 
   const symbolAlerts = alerts.filter((a) => a.symbol === selected?.symbol);
 
-  async function handleAdd() {
+  function handleAdd() {
     if (!selected) return;
     const num = parseFloat(target);
     if (Number.isNaN(num) || num <= 0) return;
-    const granted = await ensureNotificationPermission();
-    setPermGranted(granted);
+    // Synchronous state mutations first so React batches them — this keeps
+    // the "추가" button's DOM identity stable during Playwright clicks
+    // (and is also a tiny perf win for human users).
     addAlert({
       symbol: selected.symbol,
       name: selected.name,
@@ -32,6 +33,8 @@ export function AlertsPanel() {
       condition,
     });
     setTarget("");
+    // Permission check can lag — fire and forget.
+    ensureNotificationPermission().then(setPermGranted);
   }
 
   return (
