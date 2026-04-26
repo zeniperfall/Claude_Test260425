@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Camera } from "lucide-react";
 import {
   createChart,
   CandlestickSeries,
@@ -24,6 +25,7 @@ interface Props {
   candles: Candle[];
   overlays?: OverlayConfig;
   loading?: boolean;
+  symbol?: string;
 }
 
 interface HoverInfo {
@@ -36,7 +38,7 @@ interface HoverInfo {
   changePercent: number;
 }
 
-export function CandlestickChart({ candles, overlays, loading }: Props) {
+export function CandlestickChart({ candles, overlays, loading, symbol }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -191,9 +193,35 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
     }
   }, [candles, overlays?.sma20, overlays?.sma50, overlays?.bollinger]);
 
+  function downloadScreenshot() {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const canvas = chart.takeScreenshot();
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const name = symbol ? `${symbol}_chart.png` : "chart.png";
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
+      <button
+        onClick={downloadScreenshot}
+        className="absolute top-2 right-2 z-10 p-1.5 rounded bg-[var(--bg-2)]/80 backdrop-blur border border-[var(--border)] text-[var(--text-secondary)] hover:text-white hover:border-[var(--bg-3)]"
+        title="차트 스크린샷 다운로드"
+        aria-label="차트 스크린샷 다운로드"
+      >
+        <Camera size={13} />
+      </button>
       {hover && (
         <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-0.5 text-[10px] tabular-nums bg-[var(--bg-2)]/90 backdrop-blur px-2 py-1 rounded border border-[var(--border)]">
           <div className="flex gap-2 text-[9px] text-[var(--text-secondary)] uppercase">

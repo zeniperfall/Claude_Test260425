@@ -11,8 +11,8 @@ test("A2: picking a KR symbol from search auto-switches the market filter", asyn
   await search.click();
   await search.fill("005930");
 
-  // Pick the result (the dropdown lists symbols + names; click the symbol row)
-  await mockedPage.getByRole("button", { name: /005930\.KS/ }).first().click();
+  // Pick the result (search uses role="option" for keyboard navigation a11y)
+  await mockedPage.getByRole("option", { name: /005930\.KS/ }).first().click();
 
   // Market filter should now show "한국" as active
   const krButton = mockedPage.getByRole("button", { name: "한국", exact: true });

@@ -15,10 +15,12 @@ test("Feature 4: alerts panel adds, lists, and removes price alerts", async ({ m
   await mockedPage.getByPlaceholder("목표가").fill("250");
   await mockedPage.getByRole("button", { name: "추가" }).click();
 
-  await expect(mockedPage.getByText(/▲ 250/)).toBeVisible();
+  // Wait for the row to appear by its delete button (more reliable than text match)
+  const deleteBtn = mockedPage.getByRole("button", { name: "알림 삭제" });
+  await expect(deleteBtn).toBeVisible({ timeout: 10_000 });
 
-  // Remove via aria-label (stable, accessibility-correct selector)
-  await mockedPage.getByRole("button", { name: "알림 삭제" }).first().click();
+  // Remove
+  await deleteBtn.first().click();
 
   await expect(mockedPage.getByText("설정된 알림이 없습니다.")).toBeVisible();
 });

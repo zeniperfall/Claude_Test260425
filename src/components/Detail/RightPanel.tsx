@@ -5,16 +5,30 @@ import { Financials } from "./Financials";
 import { News } from "./News";
 import { Indicators } from "./Indicators";
 import { Earnings } from "./Earnings";
+import { Dividends } from "./Dividends";
+import { Notes } from "./Notes";
 import { AlertsPanel } from "@/components/Alerts/AlertsPanel";
+import { PortfolioPanel } from "@/components/Portfolio/PortfolioPanel";
 
-type Tab = "financials" | "news" | "indicators" | "earnings" | "alerts";
+type Tab =
+  | "financials"
+  | "news"
+  | "indicators"
+  | "earnings"
+  | "dividends"
+  | "alerts"
+  | "portfolio"
+  | "notes";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "financials", label: "재무" },
   { key: "indicators", label: "지표" },
   { key: "earnings", label: "실적" },
+  { key: "dividends", label: "배당" },
   { key: "news", label: "뉴스" },
   { key: "alerts", label: "알림" },
+  { key: "portfolio", label: "포트폴리오" },
+  { key: "notes", label: "메모" },
 ];
 
 export function RightPanel() {
@@ -42,7 +56,10 @@ export function RightPanel() {
         {tab === "news" && <News />}
         {tab === "indicators" && <Indicators />}
         {tab === "earnings" && <Earnings />}
+        {tab === "dividends" && <Dividends />}
         {tab === "alerts" && <AlertsPanel />}
+        {tab === "portfolio" && <PortfolioPanel />}
+        {tab === "notes" && <Notes />}
       </div>
     </div>
   );

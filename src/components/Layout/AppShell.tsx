@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { GitCompareArrows, BellRing, Menu, X, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { GitCompareArrows, BellRing, Menu, X, PanelRightOpen, PanelRightClose, Grid3x3 } from "lucide-react";
 import { useAlertsStore } from "@/store/useAlertsStore";
 import { CandlestickChart } from "@/components/Chart/CandlestickChart";
 import { TimeframeSelector } from "@/components/Chart/TimeframeSelector";
@@ -96,6 +96,14 @@ export function AppShell() {
           <GitCompareArrows size={14} />
           <span className="hidden md:inline">비교</span>
         </Link>
+        <Link
+          href="/market"
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-2)]"
+          title="시장 히트맵"
+        >
+          <Grid3x3 size={14} />
+          <span className="hidden md:inline">히트맵</span>
+        </Link>
         <AuthButton />
         <AuthSync />
 
@@ -137,7 +145,12 @@ export function AppShell() {
             </div>
           </div>
           <div className="flex-1 min-h-0">
-            <CandlestickChart candles={candles ?? []} overlays={overlays} loading={isFetching} />
+            <CandlestickChart
+              candles={candles ?? []}
+              overlays={overlays}
+              loading={isFetching}
+              symbol={selected?.symbol}
+            />
           </div>
         </main>
 

@@ -81,6 +81,18 @@ export interface EarningsRow {
   revenueEstimate?: number;
 }
 
+export interface DividendEntry {
+  date: string;
+  amount: number;
+}
+
+export interface DividendData {
+  history: DividendEntry[];
+  trailingYield?: number;
+  trailingAnnualAmount?: number;
+  exDividendDate?: string;
+}
+
 export interface EarningsData {
   history: EarningsRow[];
   upcoming?: { date: string; epsEstimate?: number; revenueEstimate?: number };

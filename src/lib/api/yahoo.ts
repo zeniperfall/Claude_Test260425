@@ -2,6 +2,8 @@ import "server-only";
 import YahooFinance from "yahoo-finance2";
 import type {
   Candle,
+  DividendData,
+  DividendEntry,
   EarningsData,
   EarningsRow,
   Financials,
@@ -261,6 +263,53 @@ export async function yahooEarnings(symbol: string): Promise<EarningsData> {
       targetMeanPrice: numFromObj(fd?.targetMeanPrice),
       targetHighPrice: numFromObj(fd?.targetHighPrice),
       targetLowPrice: numFromObj(fd?.targetLowPrice),
+    };
+  } catch (err) {
+    console.error("[yahoo]", err);
+    return { history: [] };
+  }
+}
+
+export async function yahooDividends(symbol: string): Promise<DividendData> {
+  try {
+    const period2 = new Date();
+    const period1 = new Date(period2.getTime() - 5 * 366 * 24 * 60 * 60 * 1000);
+    const r = await yf.chart(symbol, {
+      period1,
+      period2,
+      interval: "1d",
+      events: "div",
+    });
+    const events = r as unknown as {
+      events?: { dividends?: Record<string, { amount?: number; date?: Date | string }> };
+    };
+    const divObj = events.events?.dividends ?? {};
+    const history: DividendEntry[] = Object.values(divObj)
+      .map((d) => ({
+        date:
+          d.date instanceof Date
+            ? d.date.toISOString().slice(0, 10)
+            : typeof d.date === "string"
+            ? d.date.slice(0, 10)
+            : "",
+        amount: typeof d.amount === "number" ? d.amount : 0,
+      }))
+      .filter((d) => d.date && d.amount > 0)
+      .sort((a, b) => (a.date < b.date ? 1 : -1)); // newest first
+
+    let summary: Record<string, unknown> | null = null;
+    try {
+      summary = await yf.quoteSummary(symbol, { modules: ["summaryDetail"] });
+    } catch {
+      // ignore
+    }
+    const sd = (summary?.summaryDetail ?? {}) as Record<string, unknown>;
+
+    return {
+      history: history.slice(0, 20),
+      trailingYield: numFromObj(sd.trailingAnnualDividendYield),
+      trailingAnnualAmount: numFromObj(sd.trailingAnnualDividendRate),
+      exDividendDate: str(sd.exDividendDate as unknown),
     };
   } catch (err) {
     console.error("[yahoo]", err);
