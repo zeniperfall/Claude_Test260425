@@ -144,6 +144,36 @@ src/
 - Alpha Vantage 무료 등급은 일일 25회 제한이라, 키 미설정 시 로컬 계산으로 자동 대체됩니다.
 - 한국·중국 종목 뉴스는 NewsAPI 영문 검색을 사용하므로 결과 품질이 제한적일 수 있습니다.
 
+## 자동 테스트 (E2E)
+
+Playwright 기반 e2e 테스트가 모든 push마다 GitHub Actions에서 자동 실행됩니다.
+
+### 로컬 실행
+
+```bash
+npx playwright install chromium
+npm run test:e2e            # headless
+npm run test:e2e:ui         # UI 모드 (interactive)
+npm run test:e2e:report     # 마지막 결과 HTML 리포트
+```
+
+### 테스트 구조
+
+- `tests/e2e/fixtures.ts` — 모든 `/api/*` 응답을 결정론적으로 mocking (Yahoo/Finnhub 호출 없이 동작)
+- `tests/e2e/00-smoke.spec.ts` — 홈/워치리스트/차트 컨테이너 기본 렌더
+- `tests/e2e/01-overlays.spec.ts` — SMA/볼린저 토글, 새로고침 영속화
+- `tests/e2e/02-url-sync.spec.ts` — `/stock/[symbol]` 라우팅, 워치리스트 클릭 시 URL 변경
+- `tests/e2e/03-compare.spec.ts` — `/compare` 종목 추가/제거, URL 동기화
+- `tests/e2e/04-alerts.spec.ts` — 알림 추가/삭제 (Notification 권한 사전 부여)
+- `tests/e2e/05-earnings.spec.ts` — 실적 탭 컨센서스/분기 데이터 표시
+- `tests/e2e/06-kis.spec.ts` — KIS 키 미설정 시 한국 종목이 fallback으로 정상 렌더
+- `tests/e2e/07-auth.spec.ts` — Supabase 미설정 시 "로컬 모드" 표기
+
+### CI 결과
+
+- 통과/실패: 저장소 **Actions** 탭
+- 실패 시: HTML 리포트 + 트레이스 + 비디오를 artifact로 자동 업로드 (14일 보관)
+
 ## 라이선스
 
 MIT (개인 학습/실습용)
