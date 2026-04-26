@@ -1,9 +1,13 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import Link from "next/link";
+import { GitCompareArrows } from "lucide-react";
 import { CandlestickChart } from "@/components/Chart/CandlestickChart";
 import { TimeframeSelector } from "@/components/Chart/TimeframeSelector";
 import { OverlayToggle } from "@/components/Chart/OverlayToggle";
+import { AuthButton } from "@/components/Auth/AuthButton";
+import { AuthSync } from "@/components/Auth/AuthSync";
 import { Watchlist } from "@/components/Watchlist/Watchlist";
 import { SearchBar } from "@/components/Search/SearchBar";
 import { MarketFilter } from "@/components/Search/MarketFilter";
@@ -59,9 +63,16 @@ export function AppShell() {
         <div className="flex-1 flex justify-center">
           <SearchBar />
         </div>
-        <div className="text-[10px] text-[var(--text-secondary)]">
-          데이터: Yahoo Finance · Finnhub · Alpha Vantage · NewsAPI
-        </div>
+        <Link
+          href="/compare"
+          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-2)]"
+          title="종목 비교 차트"
+        >
+          <GitCompareArrows size={14} />
+          비교
+        </Link>
+        <AuthButton />
+        <AuthSync />
       </header>
 
       <div className="flex-1 grid grid-cols-[260px_1fr_340px] overflow-hidden">

@@ -1,6 +1,13 @@
 import "server-only";
 import YahooFinance from "yahoo-finance2";
-import type { Candle, Financials, Quote, SymbolInfo } from "@/lib/types";
+import type {
+  Candle,
+  EarningsData,
+  EarningsRow,
+  Financials,
+  Quote,
+  SymbolInfo,
+} from "@/lib/types";
 
 // yahoo-finance2 v3 ships a Proxy default export whose method types collapse
 // to `never` under strict TS. Cast to a permissive shape for our usage.
@@ -19,7 +26,7 @@ type YFLoose = {
   quoteSummary: (
     sym: string,
     opts: Record<string, unknown>,
-  ) => Promise<Record<string, Record<string, unknown> | undefined>>;
+  ) => Promise<Record<string, unknown>>;
 };
 const yf = new (YahooFinance as unknown as new () => YFLoose)();
 
@@ -168,6 +175,90 @@ export async function yahooFinancials(symbol: string): Promise<Financials | null
     console.error("[yahoo]", err);
     return null;
   }
+}
+
+export async function yahooEarnings(symbol: string): Promise<EarningsData> {
+  try {
+    const summary = await yf.quoteSummary(symbol, {
+      modules: [
+        "earningsHistory",
+        "earningsTrend",
+        "calendarEvents",
+        "financialData",
+      ],
+    });
+
+    const historyMod = summary?.earningsHistory as
+      | { history?: Record<string, unknown>[] }
+      | undefined;
+    const calendar = summary?.calendarEvents as
+      | { earnings?: Record<string, unknown> }
+      | undefined;
+    const fd = summary?.financialData as Record<string, unknown> | undefined;
+
+    const history: EarningsRow[] = (historyMod?.history ?? [])
+      .map((h) => {
+        const dateRaw = h.quarter as { fmt?: string } | string | undefined;
+        const date =
+          typeof dateRaw === "string"
+            ? dateRaw
+            : (dateRaw as { fmt?: string } | undefined)?.fmt ?? "";
+        return {
+          date,
+          period: str(h.period as unknown),
+          epsActual: numFromObj(h.epsActual),
+          epsEstimate: numFromObj(h.epsEstimate),
+          epsSurprise: numFromObj(h.epsDifference),
+          epsSurprisePercent: numFromObj(h.surprisePercent),
+        };
+      })
+      .filter((r) => r.date)
+      .reverse(); // most recent first
+
+    const earningsCal = calendar?.earnings as Record<string, unknown> | undefined;
+    const upcomingDateRaw = earningsCal?.earningsDate as unknown[] | undefined;
+    let upcomingDate: string | undefined;
+    if (Array.isArray(upcomingDateRaw) && upcomingDateRaw.length > 0) {
+      const first = upcomingDateRaw[0];
+      if (typeof first === "string") upcomingDate = first;
+      else if (typeof first === "object" && first !== null) {
+        upcomingDate = (first as { fmt?: string }).fmt;
+      }
+    }
+    const upcoming = upcomingDate
+      ? {
+          date: upcomingDate,
+          epsEstimate: numFromObj(earningsCal?.earningsAverage),
+          revenueEstimate: numFromObj(earningsCal?.revenueAverage),
+        }
+      : undefined;
+
+    return {
+      history: history.slice(0, 8),
+      upcoming,
+      recommendationMean: numFromObj(fd?.recommendationMean),
+      numberOfAnalysts: numFromObj(fd?.numberOfAnalystOpinions),
+      targetMeanPrice: numFromObj(fd?.targetMeanPrice),
+      targetHighPrice: numFromObj(fd?.targetHighPrice),
+      targetLowPrice: numFromObj(fd?.targetLowPrice),
+    };
+  } catch (err) {
+    console.error("[yahoo]", err);
+    return { history: [] };
+  }
+}
+
+/**
+ * Yahoo response objects can be either a primitive number or
+ * `{ raw: number, fmt: string }`. This unwraps both shapes.
+ */
+function numFromObj(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (v && typeof v === "object" && "raw" in v) {
+    const raw = (v as { raw?: unknown }).raw;
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  }
+  return undefined;
 }
 
 function rangeToMs(range: string, now: Date): number {

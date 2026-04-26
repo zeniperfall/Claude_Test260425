@@ -22,6 +22,13 @@ export const TIMEFRAMES: { key: Timeframe; label: string }[] = [
  * CN: 600519 -> 600519.SS (Shanghai), 000001 -> 000001.SZ (Shenzhen).
  * US: passthrough.
  */
+export function inferMarketFromSymbol(symbol: string): Market {
+  const s = symbol.trim().toUpperCase();
+  if (s.endsWith(".KS") || s.endsWith(".KQ")) return "KR";
+  if (s.endsWith(".SS") || s.endsWith(".SZ")) return "CN";
+  return "US";
+}
+
 export function toYahooSymbol(symbol: string, market: Market): string {
   const s = symbol.trim().toUpperCase();
   if (s.includes(".")) return s;
