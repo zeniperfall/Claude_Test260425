@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { CandlestickChart } from "@/components/Chart/CandlestickChart";
 import { TimeframeSelector } from "@/components/Chart/TimeframeSelector";
+import { OverlayToggle } from "@/components/Chart/OverlayToggle";
 import { Watchlist } from "@/components/Watchlist/Watchlist";
 import { SearchBar } from "@/components/Search/SearchBar";
 import { MarketFilter } from "@/components/Search/MarketFilter";
@@ -18,6 +19,8 @@ export function AppShell() {
   const setSelected = useAppStore((s) => s.setSelected);
   const timeframe = useAppStore((s) => s.timeframe);
   const setTimeframe = useAppStore((s) => s.setTimeframe);
+  const overlays = useAppStore((s) => s.overlays);
+  const setOverlays = useAppStore((s) => s.setOverlays);
 
   // Auto-select default symbol when switching market and current selected isn't in that market.
   useEffect(() => {
@@ -68,14 +71,15 @@ export function AppShell() {
 
         <main className="flex flex-col overflow-hidden">
           <PriceHeader />
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] gap-3">
             <TimeframeSelector value={timeframe} onChange={setTimeframe} />
-            <div className="text-[11px] text-[var(--text-secondary)]">
+            <OverlayToggle value={overlays} onChange={setOverlays} />
+            <div className="text-[11px] text-[var(--text-secondary)] ml-auto">
               {selected?.symbol ?? ""} · {timeframe}
             </div>
           </div>
           <div className="flex-1 min-h-0">
-            <CandlestickChart candles={candles ?? []} loading={isFetching} />
+            <CandlestickChart candles={candles ?? []} overlays={overlays} loading={isFetching} />
           </div>
         </main>
 
