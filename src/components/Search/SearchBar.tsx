@@ -10,6 +10,7 @@ export function SearchBar() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const setSelected = useAppStore((s) => s.setSelected);
+  const setMarket = useAppStore((s) => s.setMarket);
   const ref = useRef<HTMLDivElement>(null);
 
   const { data, isFetching } = useQuery({
@@ -32,6 +33,7 @@ export function SearchBar() {
   }, []);
 
   function handlePick(item: SymbolInfo) {
+    setMarket(item.market);
     setSelected({ symbol: item.symbol, name: item.name, market: item.market });
     setQuery("");
     setOpen(false);

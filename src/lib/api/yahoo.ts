@@ -114,6 +114,22 @@ export async function yahooCandles(
   range: string,
   interval: string,
 ): Promise<Candle[]> {
+  const candles = await fetchCandlesOnce(symbol, range, interval);
+  // Fallback: when an intraday interval returns nothing (market closed,
+  // weekend, or instrument with no intraday support like KR/CN tickers
+  // outside their trading session), retry with daily candles over a wider
+  // window so the chart never stays empty for "1D".
+  if (candles.length === 0 && /^(\d+m|\d+h)$/i.test(interval)) {
+    return fetchCandlesOnce(symbol, "5d", "1d");
+  }
+  return candles;
+}
+
+async function fetchCandlesOnce(
+  symbol: string,
+  range: string,
+  interval: string,
+): Promise<Candle[]> {
   try {
     const period2 = new Date();
     const period1 = new Date(rangeToMs(range, period2));
