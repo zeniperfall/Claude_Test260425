@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
@@ -8,9 +8,11 @@ import {
   type IChartApi,
   type ISeriesApi,
   type Time,
+  type MouseEventParams,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/types";
 import { sma, bollinger } from "@/lib/indicators";
+import { cn, formatNumber, formatPercent } from "@/lib/utils";
 
 export interface OverlayConfig {
   sma20?: boolean;
@@ -24,20 +26,29 @@ interface Props {
   loading?: boolean;
 }
 
+interface HoverInfo {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+  time: number;
+  changePercent: number;
+}
+
 export function CandlestickChart({ candles, overlays, loading }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const candlesRef = useRef<Candle[]>([]);
+  const [hover, setHover] = useState<HoverInfo | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const chart = createChart(containerRef.current, {
-      layout: {
-        background: { color: "#131722" },
-        textColor: "#d1d4dc",
-      },
+      layout: { background: { color: "#131722" }, textColor: "#d1d4dc" },
       grid: {
         vertLines: { color: "#1c2030" },
         horzLines: { color: "#1c2030" },
@@ -74,11 +85,37 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
     candleSeriesRef.current = candleSeries;
     volumeSeriesRef.current = volumeSeries;
 
+    const handleCrosshair = (param: MouseEventParams) => {
+      if (!param.time || !candlesRef.current.length) {
+        setHover(null);
+        return;
+      }
+      const t = param.time as number;
+      const idx = candlesRef.current.findIndex((c) => c.time === t);
+      if (idx < 0) {
+        setHover(null);
+        return;
+      }
+      const c = candlesRef.current[idx];
+      const prev = idx > 0 ? candlesRef.current[idx - 1].close : c.open;
+      setHover({
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+        time: c.time,
+        changePercent: prev ? ((c.close - prev) / prev) * 100 : 0,
+      });
+    };
+    chart.subscribeCrosshairMove(handleCrosshair);
+
     const onResize = () => chart.timeScale().fitContent();
     window.addEventListener("resize", onResize);
 
     return () => {
       window.removeEventListener("resize", onResize);
+      chart.unsubscribeCrosshairMove(handleCrosshair);
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
@@ -88,6 +125,7 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
   }, []);
 
   useEffect(() => {
+    candlesRef.current = candles;
     if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
     if (!candles || candles.length === 0) {
       candleSeriesRef.current.setData([]);
@@ -111,7 +149,6 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
 
-  // Overlay management — recreate on candles or overlay flag changes.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -120,7 +157,7 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
       try {
         chart.removeSeries(s);
       } catch {
-        // series may already be detached
+        // already detached
       }
     });
     overlaySeriesRef.current = [];
@@ -157,6 +194,31 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
+      {hover && (
+        <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-0.5 text-[10px] tabular-nums bg-[var(--bg-2)]/90 backdrop-blur px-2 py-1 rounded border border-[var(--border)]">
+          <div className="flex gap-2 text-[9px] text-[var(--text-secondary)] uppercase">
+            <span>{new Date(hover.time * 1000).toLocaleString("ko-KR")}</span>
+          </div>
+          <div className="flex gap-3">
+            <Field label="O" value={formatNumber(hover.open)} />
+            <Field label="H" value={formatNumber(hover.high)} cls="text-up" />
+            <Field label="L" value={formatNumber(hover.low)} cls="text-down" />
+            <Field
+              label="C"
+              value={formatNumber(hover.close)}
+              cls={hover.close >= hover.open ? "text-up" : "text-down"}
+            />
+            <Field
+              label="%"
+              value={formatPercent(hover.changePercent)}
+              cls={hover.changePercent >= 0 ? "text-up" : "text-down"}
+            />
+            {hover.volume !== undefined && (
+              <Field label="V" value={hover.volume.toLocaleString()} />
+            )}
+          </div>
+        </div>
+      )}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-xs text-[var(--text-secondary)] pointer-events-none">
           로딩 중...
@@ -168,5 +230,14 @@ export function CandlestickChart({ candles, overlays, loading }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+function Field({ label, value, cls }: { label: string; value: string; cls?: string }) {
+  return (
+    <span className="flex gap-1">
+      <span className="text-[var(--text-secondary)]">{label}</span>
+      <span className={cn(cls)}>{value}</span>
+    </span>
   );
 }

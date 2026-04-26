@@ -8,6 +8,7 @@ import type {
   Quote,
   SymbolInfo,
 } from "@/lib/types";
+import { localizedName } from "@/lib/koreanNames";
 
 // yahoo-finance2 v3 ships a Proxy default export whose method types collapse
 // to `never` under strict TS. Cast to a permissive shape for our usage.
@@ -57,9 +58,11 @@ export async function yahooQuote(symbol: string): Promise<Quote | null> {
     const q = await yf.quote(symbol);
     const price = num(q.regularMarketPrice);
     if (!q || price === undefined) return null;
+    const fallbackName =
+      str(q.longName) ?? str(q.shortName) ?? str(q.symbol) ?? symbol;
     return {
       symbol: str(q.symbol) ?? symbol,
-      name: str(q.longName) ?? str(q.shortName) ?? str(q.symbol) ?? symbol,
+      name: localizedName(symbol, fallbackName),
       price,
       change: num(q.regularMarketChange) ?? 0,
       changePercent: num(q.regularMarketChangePercent) ?? 0,
@@ -96,9 +99,10 @@ export async function yahooSearch(query: string): Promise<SymbolInfo[]> {
           exchange === "SHZ"
         )
           market = "CN";
+        const fallback = str(q.longname) ?? str(q.shortname) ?? sym;
         return {
           symbol: sym,
-          name: str(q.longname) ?? str(q.shortname) ?? sym,
+          name: localizedName(sym, fallback),
           market,
           exchange,
         } as SymbolInfo;

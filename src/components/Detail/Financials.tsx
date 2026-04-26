@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import type { Financials as F } from "@/lib/types";
 import { formatCompact, formatNumber } from "@/lib/utils";
+import { Skeleton } from "@/components/Skeleton";
 
 export function Financials() {
   const selected = useAppStore((s) => s.selected);
@@ -18,7 +19,15 @@ export function Financials() {
     staleTime: 5 * 60_000,
   });
 
-  if (!data) return <div className="p-3 text-xs text-[var(--text-secondary)]">로딩 중...</div>;
+  if (!data) {
+    return (
+      <div className="p-3 grid grid-cols-2 gap-x-4 gap-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-4" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 space-y-3">

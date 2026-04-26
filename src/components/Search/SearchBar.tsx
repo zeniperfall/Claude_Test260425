@@ -9,9 +9,11 @@ import { cn } from "@/lib/utils";
 export function SearchBar() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
   const setSelected = useAppStore((s) => s.setSelected);
   const setMarket = useAppStore((s) => s.setMarket);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const { data, isFetching } = useQuery({
     queryKey: ["search", query],
@@ -32,11 +34,43 @@ export function SearchBar() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  // Reset highlight when results change
+  useEffect(() => {
+    setHighlight(0);
+  }, [data]);
+
+  // Scroll highlighted into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const el = listRef.current.children[highlight] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlight]);
+
   function handlePick(item: SymbolInfo) {
     setMarket(item.market);
     setSelected({ symbol: item.symbol, name: item.name, market: item.market });
     setQuery("");
     setOpen(false);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || !data || data.length === 0) {
+      if (e.key === "Escape") setOpen(false);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((i) => (i + 1) % data.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((i) => (i - 1 + data.length) % data.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const item = data[highlight];
+      if (item) handlePick(item);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
   }
 
   return (
@@ -50,28 +84,46 @@ export function SearchBar() {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
           placeholder="종목 검색 (예: AAPL, 005930.KS, 600519.SS)"
-          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--text-secondary)]"
+          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--text-secondary)] min-w-0"
+          aria-label="종목 검색"
+          aria-autocomplete="list"
+          aria-expanded={open}
         />
         {query && (
-          <button onClick={() => setQuery("")} className="text-[var(--text-secondary)] hover:text-white">
+          <button
+            onClick={() => setQuery("")}
+            className="text-[var(--text-secondary)] hover:text-white"
+            aria-label="검색어 지우기"
+          >
             <X size={14} />
           </button>
         )}
       </div>
       {open && query.trim() && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-2)] border border-[var(--border)] rounded shadow-lg z-50 max-h-80 overflow-auto">
+        <div
+          ref={listRef}
+          role="listbox"
+          className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-2)] border border-[var(--border)] rounded shadow-lg z-50 max-h-80 overflow-auto"
+        >
           {isFetching && (
             <div className="px-3 py-2 text-xs text-[var(--text-secondary)]">검색 중...</div>
           )}
           {!isFetching && data && data.length === 0 && (
             <div className="px-3 py-2 text-xs text-[var(--text-secondary)]">결과 없음</div>
           )}
-          {data?.map((r) => (
+          {data?.map((r, i) => (
             <button
               key={r.symbol}
               onClick={() => handlePick(r)}
-              className="w-full flex items-center justify-between px-3 py-2 hover:bg-[var(--bg-3)] text-left"
+              onMouseEnter={() => setHighlight(i)}
+              role="option"
+              aria-selected={highlight === i}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2 text-left",
+                highlight === i ? "bg-[var(--bg-3)]" : "hover:bg-[var(--bg-3)]",
+              )}
             >
               <div className="flex flex-col">
                 <span className="text-sm font-medium">{r.symbol}</span>

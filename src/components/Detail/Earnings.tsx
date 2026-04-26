@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import type { EarningsData } from "@/lib/types";
 import { cn, formatNumber, formatPercent } from "@/lib/utils";
+import { Skeleton } from "@/components/Skeleton";
 
 const RECOMMENDATION_LABEL: Record<number, { label: string; cls: string }> = {
   1: { label: "강력 매수", cls: "text-up" },
@@ -33,7 +34,17 @@ export function Earnings() {
   });
 
   if (isFetching && !data) {
-    return <div className="p-3 text-xs text-[var(--text-secondary)]">로딩 중...</div>;
+    return (
+      <div className="p-3 space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-4" />
+          ))}
+        </div>
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
   }
   if (!data || (!data.history?.length && !data.upcoming && !data.targetMeanPrice)) {
     return <div className="p-3 text-xs text-[var(--text-secondary)]">실적 데이터가 없습니다.</div>;
