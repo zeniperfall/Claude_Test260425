@@ -8,7 +8,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: [["html", { open: "never" }], ["list"]],
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never" }], ["list"]]
+    : [["html", { open: "never" }], ["list"]],
   outputDir: "test-results",
   use: {
     baseURL: `http://localhost:${PORT}`,

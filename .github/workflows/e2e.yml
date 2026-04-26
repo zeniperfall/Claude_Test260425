@@ -44,9 +44,22 @@ jobs:
         run: npm run build
 
       - name: Run Playwright tests
+        id: playwright
         env:
           CI: "true"
-        run: npx playwright test
+        run: |
+          set -o pipefail
+          npx playwright test 2>&1 | tee /tmp/pw-output.txt
+
+      - name: Append failure tail to step summary
+        if: failure()
+        run: |
+          {
+            echo "## Playwright failure tail (last 200 lines)"
+            echo '```'
+            tail -200 /tmp/pw-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Playwright report
         if: always()
