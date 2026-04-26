@@ -105,6 +105,7 @@ export function AlertsPanel() {
                   onClick={() => resetAlert(a.id)}
                   className="text-[var(--text-secondary)] hover:text-white p-0.5"
                   title="다시 활성화"
+                  aria-label="알림 다시 활성화"
                 >
                   <RotateCcw size={11} />
                 </button>
@@ -112,6 +113,7 @@ export function AlertsPanel() {
               <button
                 onClick={() => removeAlert(a.id)}
                 className="text-[var(--text-secondary)] hover:text-down p-0.5"
+                aria-label="알림 삭제"
               >
                 <Trash2 size={11} />
               </button>
