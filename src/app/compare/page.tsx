@@ -129,12 +129,7 @@ function CompareInner() {
           <button
             onClick={addSymbol}
             disabled={symbols.length >= MAX_SYMBOLS || !input.trim()}
-            className={cn(
-              "p-1.5 rounded text-xs",
-              symbols.length >= MAX_SYMBOLS || !input.trim()
-                ? "text-[var(--text-secondary)] cursor-not-allowed"
-                : "bg-[var(--accent)] text-white hover:opacity-90",
-            )}
+            className="p-1.5 rounded text-xs bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
           >
             <Plus size={14} />
           </button>

@@ -65,12 +65,7 @@ export function AlertsPanel() {
         <button
           onClick={handleAdd}
           disabled={!selected || !target}
-          className={cn(
-            "px-2.5 py-1 text-xs rounded",
-            !selected || !target
-              ? "text-[var(--text-secondary)] cursor-not-allowed"
-              : "bg-[var(--accent)] text-white hover:opacity-90",
-          )}
+          className="px-2.5 py-1 text-xs rounded bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
         >
           추가
         </button>
