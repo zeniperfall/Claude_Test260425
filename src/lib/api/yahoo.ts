@@ -2,12 +2,15 @@ import "server-only";
 import YahooFinance from "yahoo-finance2";
 import type {
   Candle,
+  DividendData,
+  DividendEntry,
   EarningsData,
   EarningsRow,
   Financials,
   Quote,
   SymbolInfo,
 } from "@/lib/types";
+import { localizedName } from "@/lib/koreanNames";
 
 // yahoo-finance2 v3 ships a Proxy default export whose method types collapse
 // to `never` under strict TS. Cast to a permissive shape for our usage.
@@ -57,9 +60,11 @@ export async function yahooQuote(symbol: string): Promise<Quote | null> {
     const q = await yf.quote(symbol);
     const price = num(q.regularMarketPrice);
     if (!q || price === undefined) return null;
+    const fallbackName =
+      str(q.longName) ?? str(q.shortName) ?? str(q.symbol) ?? symbol;
     return {
       symbol: str(q.symbol) ?? symbol,
-      name: str(q.longName) ?? str(q.shortName) ?? str(q.symbol) ?? symbol,
+      name: localizedName(symbol, fallbackName),
       price,
       change: num(q.regularMarketChange) ?? 0,
       changePercent: num(q.regularMarketChangePercent) ?? 0,
@@ -96,9 +101,10 @@ export async function yahooSearch(query: string): Promise<SymbolInfo[]> {
           exchange === "SHZ"
         )
           market = "CN";
+        const fallback = str(q.longname) ?? str(q.shortname) ?? sym;
         return {
           symbol: sym,
-          name: str(q.longname) ?? str(q.shortname) ?? sym,
+          name: localizedName(sym, fallback),
           market,
           exchange,
         } as SymbolInfo;
@@ -110,6 +116,22 @@ export async function yahooSearch(query: string): Promise<SymbolInfo[]> {
 }
 
 export async function yahooCandles(
+  symbol: string,
+  range: string,
+  interval: string,
+): Promise<Candle[]> {
+  const candles = await fetchCandlesOnce(symbol, range, interval);
+  // Fallback: when an intraday interval returns nothing (market closed,
+  // weekend, or instrument with no intraday support like KR/CN tickers
+  // outside their trading session), retry with daily candles over a wider
+  // window so the chart never stays empty for "1D".
+  if (candles.length === 0 && /^(\d+m|\d+h)$/i.test(interval)) {
+    return fetchCandlesOnce(symbol, "5d", "1d");
+  }
+  return candles;
+}
+
+async function fetchCandlesOnce(
   symbol: string,
   range: string,
   interval: string,
@@ -241,6 +263,53 @@ export async function yahooEarnings(symbol: string): Promise<EarningsData> {
       targetMeanPrice: numFromObj(fd?.targetMeanPrice),
       targetHighPrice: numFromObj(fd?.targetHighPrice),
       targetLowPrice: numFromObj(fd?.targetLowPrice),
+    };
+  } catch (err) {
+    console.error("[yahoo]", err);
+    return { history: [] };
+  }
+}
+
+export async function yahooDividends(symbol: string): Promise<DividendData> {
+  try {
+    const period2 = new Date();
+    const period1 = new Date(period2.getTime() - 5 * 366 * 24 * 60 * 60 * 1000);
+    const r = await yf.chart(symbol, {
+      period1,
+      period2,
+      interval: "1d",
+      events: "div",
+    });
+    const events = r as unknown as {
+      events?: { dividends?: Record<string, { amount?: number; date?: Date | string }> };
+    };
+    const divObj = events.events?.dividends ?? {};
+    const history: DividendEntry[] = Object.values(divObj)
+      .map((d) => ({
+        date:
+          d.date instanceof Date
+            ? d.date.toISOString().slice(0, 10)
+            : typeof d.date === "string"
+            ? d.date.slice(0, 10)
+            : "",
+        amount: typeof d.amount === "number" ? d.amount : 0,
+      }))
+      .filter((d) => d.date && d.amount > 0)
+      .sort((a, b) => (a.date < b.date ? 1 : -1)); // newest first
+
+    let summary: Record<string, unknown> | null = null;
+    try {
+      summary = await yf.quoteSummary(symbol, { modules: ["summaryDetail"] });
+    } catch {
+      // ignore
+    }
+    const sd = (summary?.summaryDetail ?? {}) as Record<string, unknown>;
+
+    return {
+      history: history.slice(0, 20),
+      trailingYield: numFromObj(sd.trailingAnnualDividendYield),
+      trailingAnnualAmount: numFromObj(sd.trailingAnnualDividendRate),
+      exDividendDate: str(sd.exDividendDate as unknown),
     };
   } catch (err) {
     console.error("[yahoo]", err);

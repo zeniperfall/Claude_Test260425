@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import type { Indicators as I } from "@/lib/types";
 import { cn, formatNumber } from "@/lib/utils";
+import { Skeleton } from "@/components/Skeleton";
 
 export function Indicators() {
   const selected = useAppStore((s) => s.selected);
@@ -18,7 +19,15 @@ export function Indicators() {
     staleTime: 10 * 60_000,
   });
 
-  if (!data) return <div className="p-3 text-xs text-[var(--text-secondary)]">로딩 중...</div>;
+  if (!data) {
+    return (
+      <div className="p-3 grid grid-cols-2 gap-x-4 gap-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-4" />
+        ))}
+      </div>
+    );
+  }
 
   const lastRsi = data.rsi?.at(-1)?.value;
   const lastSma20 = data.sma20?.at(-1)?.value;

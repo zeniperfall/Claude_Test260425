@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import type { Quote } from "@/lib/types";
+import { exchangeLabel } from "@/lib/markets";
 import { cn, formatNumber, formatPercent } from "@/lib/utils";
 
 export function PriceHeader() {
@@ -49,6 +50,9 @@ export function PriceHeader() {
             <span className="text-xs text-[var(--text-secondary)]">{data?.name ?? selected.name}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-2)] text-[var(--text-secondary)]">
               {selected.market}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-2)] text-[var(--text-secondary)]">
+              {exchangeLabel(selected.symbol)}
             </span>
           </div>
         </div>

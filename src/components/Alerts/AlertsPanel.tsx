@@ -19,19 +19,22 @@ export function AlertsPanel() {
 
   const symbolAlerts = alerts.filter((a) => a.symbol === selected?.symbol);
 
-  async function handleAdd() {
+  function handleAdd() {
     if (!selected) return;
     const num = parseFloat(target);
     if (Number.isNaN(num) || num <= 0) return;
-    const granted = await ensureNotificationPermission();
-    setPermGranted(granted);
     addAlert({
       symbol: selected.symbol,
       name: selected.name,
       target: num,
       condition,
     });
-    setTarget("");
+    // Defer the input clear to a microtask so React commits the addAlert
+    // state change before the "추가" button's disabled prop flips. Otherwise
+    // the button can detach mid-click in Playwright (and very briefly in
+    // real browsers under heavy GC).
+    Promise.resolve().then(() => setTarget(""));
+    ensureNotificationPermission().then(setPermGranted);
   }
 
   return (
@@ -64,13 +67,8 @@ export function AlertsPanel() {
         />
         <button
           onClick={handleAdd}
-          disabled={!selected || !target}
-          className={cn(
-            "px-2.5 py-1 text-xs rounded",
-            !selected || !target
-              ? "text-[var(--text-secondary)] cursor-not-allowed"
-              : "bg-[var(--accent)] text-white hover:opacity-90",
-          )}
+          disabled={!selected}
+          className="px-2.5 py-1 text-xs rounded bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
         >
           추가
         </button>

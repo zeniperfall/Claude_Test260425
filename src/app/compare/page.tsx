@@ -7,7 +7,6 @@ import { ArrowLeft, Plus, X } from "lucide-react";
 import { ComparisonChart } from "@/components/Compare/ComparisonChart";
 import { TimeframeSelector } from "@/components/Chart/TimeframeSelector";
 import type { Candle, Timeframe } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 const COLORS = ["#42a5f5", "#ef5350", "#26a69a", "#ffa726", "#ab47bc"];
 const MAX_SYMBOLS = 5;
@@ -129,12 +128,7 @@ function CompareInner() {
           <button
             onClick={addSymbol}
             disabled={symbols.length >= MAX_SYMBOLS || !input.trim()}
-            className={cn(
-              "p-1.5 rounded text-xs",
-              symbols.length >= MAX_SYMBOLS || !input.trim()
-                ? "text-[var(--text-secondary)] cursor-not-allowed"
-                : "bg-[var(--accent)] text-white hover:opacity-90",
-            )}
+            className="p-1.5 rounded text-xs bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
           >
             <Plus size={14} />
           </button>

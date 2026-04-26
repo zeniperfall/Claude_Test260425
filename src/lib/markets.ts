@@ -22,6 +22,19 @@ export const TIMEFRAMES: { key: Timeframe; label: string }[] = [
  * CN: 600519 -> 600519.SS (Shanghai), 000001 -> 000001.SZ (Shenzhen).
  * US: passthrough.
  */
+export function exchangeLabel(symbol: string): string {
+  const s = symbol.trim().toUpperCase();
+  if (s.endsWith(".KS")) return "KOSPI";
+  if (s.endsWith(".KQ")) return "KOSDAQ";
+  if (s.endsWith(".SS")) return "SSE";
+  if (s.endsWith(".SZ")) return "SZSE";
+  if (s.endsWith(".HK")) return "HKEX";
+  if (s.endsWith(".T")) return "TSE";
+  if (s.endsWith(".L")) return "LSE";
+  // US: NYSE / NASDAQ — without API call we can't know which, so just "US"
+  return "US";
+}
+
 export function inferMarketFromSymbol(symbol: string): Market {
   const s = symbol.trim().toUpperCase();
   if (s.endsWith(".KS") || s.endsWith(".KQ")) return "KR";
