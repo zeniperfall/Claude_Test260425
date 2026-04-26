@@ -69,3 +69,24 @@ export interface Indicators {
   sma20?: IndicatorPoint[];
   sma50?: IndicatorPoint[];
 }
+
+export interface EarningsRow {
+  date: string;
+  period?: string;
+  epsActual?: number;
+  epsEstimate?: number;
+  epsSurprise?: number;
+  epsSurprisePercent?: number;
+  revenueActual?: number;
+  revenueEstimate?: number;
+}
+
+export interface EarningsData {
+  history: EarningsRow[];
+  upcoming?: { date: string; epsEstimate?: number; revenueEstimate?: number };
+  recommendationMean?: number;
+  numberOfAnalysts?: number;
+  targetMeanPrice?: number;
+  targetHighPrice?: number;
+  targetLowPrice?: number;
+}

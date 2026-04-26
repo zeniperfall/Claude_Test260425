@@ -6,11 +6,17 @@
 
 - **다중 시장 지원**: 한국(KOSPI/KOSDAQ), 미국, 중국(상하이/선전) 종목 검색·조회
 - **TradingView 스타일 캔들차트**: 1D / 1W / 1M / 3M / 6M / 1Y / 5Y 시간대 전환, 거래량 히스토그램
-- **워치리스트**: 시장별 필터링, 별표(★) 토글로 추가/제거, 브라우저 localStorage에 영속화
+- **차트 오버레이**: SMA(20/50) 이동평균, 볼린저 밴드(20,2) 토글
+- **URL 동기화**: `/stock/[symbol]` 라우팅으로 종목 즉시 공유 가능
+- **종목 비교 차트**: 여러 종목을 시작일 대비 % 변동률로 정규화 비교 (`/compare`)
+- **가격 알림**: 목표가 ± 조건 도달 시 브라우저 Notification 발송 (백그라운드 폴링)
+- **워치리스트**: 시장별 필터링, 별표(★) 토글, localStorage 영속화 (선택적 Supabase 동기화)
 - **종목 검색**: Yahoo Finance 기반 자동완성
 - **재무 정보**: 시가총액, P/E, EPS, 배당수익률, 베타, 52주 최고/최저, 섹터/산업
+- **분기 실적 / 컨센서스**: 최근 8분기 EPS 실제 vs 추정, 애널리스트 투자의견·목표주가
 - **뉴스**: Finnhub(미국) / NewsAPI(글로벌) 통합
 - **기술 지표**: RSI(14), MACD, SMA(20/50) — Alpha Vantage 우선, 미설정 시 캔들에서 로컬 계산
+- **로그인 (선택)**: Supabase Auth로 워치리스트 클라우드 동기화
 
 ## 데이터 소스 (5개)
 
@@ -137,6 +143,36 @@ src/
 - Yahoo Finance는 비공식 API라 안정성/약관 변경 리스크가 있습니다. 상용 운영 시 공식 데이터(한국투자증권 KIS, Polygon.io 등) 검토를 권장합니다.
 - Alpha Vantage 무료 등급은 일일 25회 제한이라, 키 미설정 시 로컬 계산으로 자동 대체됩니다.
 - 한국·중국 종목 뉴스는 NewsAPI 영문 검색을 사용하므로 결과 품질이 제한적일 수 있습니다.
+
+## 자동 테스트 (E2E)
+
+Playwright 기반 e2e 테스트가 모든 push마다 GitHub Actions에서 자동 실행됩니다.
+
+### 로컬 실행
+
+```bash
+npx playwright install chromium
+npm run test:e2e            # headless
+npm run test:e2e:ui         # UI 모드 (interactive)
+npm run test:e2e:report     # 마지막 결과 HTML 리포트
+```
+
+### 테스트 구조
+
+- `tests/e2e/fixtures.ts` — 모든 `/api/*` 응답을 결정론적으로 mocking (Yahoo/Finnhub 호출 없이 동작)
+- `tests/e2e/00-smoke.spec.ts` — 홈/워치리스트/차트 컨테이너 기본 렌더
+- `tests/e2e/01-overlays.spec.ts` — SMA/볼린저 토글, 새로고침 영속화
+- `tests/e2e/02-url-sync.spec.ts` — `/stock/[symbol]` 라우팅, 워치리스트 클릭 시 URL 변경
+- `tests/e2e/03-compare.spec.ts` — `/compare` 종목 추가/제거, URL 동기화
+- `tests/e2e/04-alerts.spec.ts` — 알림 추가/삭제 (Notification 권한 사전 부여)
+- `tests/e2e/05-earnings.spec.ts` — 실적 탭 컨센서스/분기 데이터 표시
+- `tests/e2e/06-kis.spec.ts` — KIS 키 미설정 시 한국 종목이 fallback으로 정상 렌더
+- `tests/e2e/07-auth.spec.ts` — Supabase 미설정 시 "로컬 모드" 표기
+
+### CI 결과
+
+- 통과/실패: 저장소 **Actions** 탭
+- 실패 시: HTML 리포트 + 트레이스 + 비디오를 artifact로 자동 업로드 (14일 보관)
 
 ## 라이선스
 

@@ -10,6 +10,12 @@ export interface WatchlistItem {
   market: Market;
 }
 
+export interface OverlayPrefs {
+  sma20?: boolean;
+  sma50?: boolean;
+  bollinger?: boolean;
+}
+
 interface AppState {
   market: Market;
   setMarket: (m: Market) => void;
@@ -19,6 +25,9 @@ interface AppState {
 
   timeframe: Timeframe;
   setTimeframe: (tf: Timeframe) => void;
+
+  overlays: OverlayPrefs;
+  setOverlays: (next: OverlayPrefs) => void;
 
   watchlist: WatchlistItem[];
   addToWatchlist: (item: WatchlistItem) => void;
@@ -44,6 +53,9 @@ export const useAppStore = create<AppState>()(
       timeframe: "3M",
       setTimeframe: (tf) => set({ timeframe: tf }),
 
+      overlays: { sma20: false, sma50: false, bollinger: false },
+      setOverlays: (next) => set({ overlays: next }),
+
       watchlist: defaultWatchlist,
       addToWatchlist: (item) => {
         if (get().watchlist.some((w) => w.symbol === item.symbol)) return;
@@ -60,6 +72,7 @@ export const useAppStore = create<AppState>()(
         selected: s.selected,
         market: s.market,
         timeframe: s.timeframe,
+        overlays: s.overlays,
       }),
     },
   ),

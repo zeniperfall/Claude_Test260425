@@ -17,6 +17,33 @@ export function sma(candles: Candle[], period: number): IndicatorPoint[] {
   return out;
 }
 
+export function bollinger(
+  candles: Candle[],
+  period = 20,
+  multiplier = 2,
+): { upper: IndicatorPoint[]; middle: IndicatorPoint[]; lower: IndicatorPoint[] } {
+  if (candles.length < period) return { upper: [], middle: [], lower: [] };
+  const upper: IndicatorPoint[] = [];
+  const middle: IndicatorPoint[] = [];
+  const lower: IndicatorPoint[] = [];
+  for (let i = period - 1; i < candles.length; i++) {
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) sum += candles[j].close;
+    const mean = sum / period;
+    let variance = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const d = candles[j].close - mean;
+      variance += d * d;
+    }
+    const sd = Math.sqrt(variance / period);
+    const t = candles[i].time;
+    middle.push({ time: t, value: mean });
+    upper.push({ time: t, value: mean + multiplier * sd });
+    lower.push({ time: t, value: mean - multiplier * sd });
+  }
+  return { upper, middle, lower };
+}
+
 export function rsi(candles: Candle[], period = 14): IndicatorPoint[] {
   if (candles.length <= period) return [];
   const out: IndicatorPoint[] = [];

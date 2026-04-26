@@ -4,22 +4,32 @@ import {
   createChart,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   type IChartApi,
   type ISeriesApi,
   type Time,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/types";
+import { sma, bollinger } from "@/lib/indicators";
+
+export interface OverlayConfig {
+  sma20?: boolean;
+  sma50?: boolean;
+  bollinger?: boolean;
+}
 
 interface Props {
   candles: Candle[];
+  overlays?: OverlayConfig;
   loading?: boolean;
 }
 
-export function CandlestickChart({ candles, loading }: Props) {
+export function CandlestickChart({ candles, overlays, loading }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -37,12 +47,8 @@ export function CandlestickChart({ candles, loading }: Props) {
         timeVisible: true,
         secondsVisible: false,
       },
-      rightPriceScale: {
-        borderColor: "#2a2e3e",
-      },
-      crosshair: {
-        mode: 1,
-      },
+      rightPriceScale: { borderColor: "#2a2e3e" },
+      crosshair: { mode: 1 },
       autoSize: true,
     });
 
@@ -77,6 +83,7 @@ export function CandlestickChart({ candles, loading }: Props) {
       chartRef.current = null;
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      overlaySeriesRef.current = [];
     };
   }, []);
 
@@ -103,6 +110,49 @@ export function CandlestickChart({ candles, loading }: Props) {
     volumeSeriesRef.current.setData(volData);
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
+
+  // Overlay management — recreate on candles or overlay flag changes.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    overlaySeriesRef.current.forEach((s) => {
+      try {
+        chart.removeSeries(s);
+      } catch {
+        // series may already be detached
+      }
+    });
+    overlaySeriesRef.current = [];
+
+    if (!candles || candles.length === 0) return;
+
+    const addLine = (
+      data: { time: number; value: number }[],
+      color: string,
+      lineWidth: 1 | 2 | 3 | 4 = 1,
+      lineStyle: 0 | 1 | 2 | 3 = 0,
+    ) => {
+      const series = chart.addSeries(LineSeries, {
+        color,
+        lineWidth,
+        lineStyle,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      series.setData(data.map((p) => ({ time: p.time as Time, value: p.value })));
+      overlaySeriesRef.current.push(series);
+    };
+
+    if (overlays?.sma20) addLine(sma(candles, 20), "#42a5f5", 2);
+    if (overlays?.sma50) addLine(sma(candles, 50), "#ffa726", 2);
+    if (overlays?.bollinger) {
+      const bb = bollinger(candles, 20, 2);
+      addLine(bb.upper, "#ab47bc", 1, 2);
+      addLine(bb.middle, "#ab47bc", 1, 0);
+      addLine(bb.lower, "#ab47bc", 1, 2);
+    }
+  }, [candles, overlays?.sma20, overlays?.sma50, overlays?.bollinger]);
 
   return (
     <div className="relative w-full h-full">
