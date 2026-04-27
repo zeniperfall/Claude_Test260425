@@ -113,8 +113,18 @@ export async function installApiMocks(page: Page, overrides: MockOverrides = {})
     });
   });
 
+  // Single matcher dispatches to /api/candles vs /api/candles/extend so we
+  // don't depend on route registration order.
   await page.route("**/api/candles**", async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.includes("/api/candles/extend")) {
+      // No further history available — tells the chart to stop asking.
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ candles: [] }),
+      });
+    }
     const symbol = url.searchParams.get("symbol") ?? "AAPL";
     await route.fulfill({
       status: 200,
