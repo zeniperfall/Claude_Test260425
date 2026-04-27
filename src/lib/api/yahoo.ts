@@ -139,6 +139,20 @@ async function fetchCandlesOnce(
   try {
     const period2 = new Date();
     const period1 = new Date(rangeToMs(range, period2));
+    return await fetchCandlesByDateRange(symbol, period1, period2, interval);
+  } catch (err) {
+    console.error("[yahoo]", err);
+    return [];
+  }
+}
+
+async function fetchCandlesByDateRange(
+  symbol: string,
+  period1: Date,
+  period2: Date,
+  interval: string,
+): Promise<Candle[]> {
+  try {
     const r = await yf.chart(symbol, { period1, period2, interval });
     return (r.quotes ?? [])
       .filter((c) => {
@@ -162,6 +176,40 @@ async function fetchCandlesOnce(
     console.error("[yahoo]", err);
     return [];
   }
+}
+
+/**
+ * Fetches a window of historical candles ending strictly before `beforeEpoch`.
+ * Used by the chart's infinite-scroll-back feature.
+ *
+ * Window size depends on the bar interval — fewer bars per call for large
+ * intervals, since older data tails off and Yahoo caps response size.
+ */
+export async function yahooCandlesBefore(
+  symbol: string,
+  beforeEpoch: number,
+  interval: string,
+): Promise<Candle[]> {
+  const day = 24 * 60 * 60 * 1000;
+  // Cap at a small buffer before the existing leftmost candle so the new
+  // window doesn't overlap (we trim duplicates client-side anyway).
+  const period2 = new Date(beforeEpoch * 1000 - 1000);
+  const windowMs = (() => {
+    switch (interval) {
+      case "1d":
+        return 365 * day; // 1 year per request
+      case "1wk":
+        return 5 * 365 * day; // 5 years per request
+      case "1mo":
+        return 10 * 365 * day; // 10 years per request
+      default:
+        // Intraday — older intraday from Yahoo is often not available, but
+        // attempt a 7-day window to support the few cases that do.
+        return 7 * day;
+    }
+  })();
+  const period1 = new Date(period2.getTime() - windowMs);
+  return fetchCandlesByDateRange(symbol, period1, period2, interval);
 }
 
 export async function yahooFinancials(symbol: string): Promise<Financials | null> {

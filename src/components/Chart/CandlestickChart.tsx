@@ -10,6 +10,7 @@ import {
   type ISeriesApi,
   type Time,
   type MouseEventParams,
+  type LogicalRange,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/types";
 import { sma, bollinger } from "@/lib/indicators";
@@ -26,6 +27,12 @@ interface Props {
   overlays?: OverlayConfig;
   loading?: boolean;
   symbol?: string;
+  /**
+   * Called when the user scrolls past the leftmost loaded candle. Should
+   * return older candles (strictly before `beforeTime`). The chart prepends
+   * them and preserves the user's visible range.
+   */
+  onLoadMore?: (beforeTime: number) => Promise<Candle[]>;
 }
 
 interface HoverInfo {
@@ -38,15 +45,39 @@ interface HoverInfo {
   changePercent: number;
 }
 
-export function CandlestickChart({ candles, overlays, loading, symbol }: Props) {
+export function CandlestickChart({
+  candles,
+  overlays,
+  loading,
+  symbol,
+  onLoadMore,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
   const candlesRef = useRef<Candle[]>([]);
+
+  // Internal candle state — starts as the prop value but grows as the user
+  // scrolls back in time and we lazy-load more.
+  const [displayCandles, setDisplayCandles] = useState<Candle[]>(candles);
+  // When true, the next render will fitContent() — used on initial load /
+  // timeframe / symbol change but NOT on lazy-load prepends (which would
+  // reset the user's scroll).
+  const fitContentRef = useRef(true);
+  // Concurrency guard for onLoadMore.
+  const fetchingMoreRef = useRef(false);
+  // Once Yahoo returns no older data we stop trying.
+  const reachedOldestRef = useRef(false);
+  // Pending visible-range adjustment: after we prepend N candles, restore
+  // the previous logical range shifted by N so the user keeps seeing the
+  // same bars.
+  const pendingRangeShiftRef = useRef<{ range: LogicalRange; shift: number } | null>(null);
+
   const [hover, setHover] = useState<HoverInfo | null>(null);
 
+  // Initial chart construction — only ever runs once.
   useEffect(() => {
     if (!containerRef.current) return;
     const chart = createChart(containerRef.current, {
@@ -112,11 +143,7 @@ export function CandlestickChart({ candles, overlays, loading, symbol }: Props) 
     };
     chart.subscribeCrosshairMove(handleCrosshair);
 
-    const onResize = () => chart.timeScale().fitContent();
-    window.addEventListener("resize", onResize);
-
     return () => {
-      window.removeEventListener("resize", onResize);
       chart.unsubscribeCrosshairMove(handleCrosshair);
       chart.remove();
       chartRef.current = null;
@@ -126,31 +153,56 @@ export function CandlestickChart({ candles, overlays, loading, symbol }: Props) 
     };
   }, []);
 
+  // When the prop candles change (timeframe / symbol switch), reset the
+  // internal state and request a fitContent on the next render.
   useEffect(() => {
-    candlesRef.current = candles;
+    setDisplayCandles(candles);
+    fitContentRef.current = true;
+    fetchingMoreRef.current = false;
+    reachedOldestRef.current = false;
+    pendingRangeShiftRef.current = null;
+  }, [candles]);
+
+  // Render displayCandles to the chart whenever they change.
+  useEffect(() => {
+    candlesRef.current = displayCandles;
     if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
-    if (!candles || candles.length === 0) {
+    if (!displayCandles || displayCandles.length === 0) {
       candleSeriesRef.current.setData([]);
       volumeSeriesRef.current.setData([]);
       return;
     }
-    const data = candles.map((c) => ({
+    const data = displayCandles.map((c) => ({
       time: c.time as Time,
       open: c.open,
       high: c.high,
       low: c.low,
       close: c.close,
     }));
-    const volData = candles.map((c) => ({
+    const volData = displayCandles.map((c) => ({
       time: c.time as Time,
       value: c.volume ?? 0,
       color: c.close >= c.open ? "rgba(38, 166, 154, 0.5)" : "rgba(239, 83, 80, 0.5)",
     }));
     candleSeriesRef.current.setData(data);
     volumeSeriesRef.current.setData(volData);
-    chartRef.current?.timeScale().fitContent();
-  }, [candles]);
 
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (fitContentRef.current) {
+      chart.timeScale().fitContent();
+      fitContentRef.current = false;
+    } else if (pendingRangeShiftRef.current) {
+      const { range, shift } = pendingRangeShiftRef.current;
+      pendingRangeShiftRef.current = null;
+      chart.timeScale().setVisibleLogicalRange({
+        from: range.from + shift,
+        to: range.to + shift,
+      });
+    }
+  }, [displayCandles]);
+
+  // Overlay management — recreate on data or overlay changes.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -164,7 +216,7 @@ export function CandlestickChart({ candles, overlays, loading, symbol }: Props) 
     });
     overlaySeriesRef.current = [];
 
-    if (!candles || candles.length === 0) return;
+    if (!displayCandles || displayCandles.length === 0) return;
 
     const addLine = (
       data: { time: number; value: number }[],
@@ -183,15 +235,65 @@ export function CandlestickChart({ candles, overlays, loading, symbol }: Props) 
       overlaySeriesRef.current.push(series);
     };
 
-    if (overlays?.sma20) addLine(sma(candles, 20), "#42a5f5", 2);
-    if (overlays?.sma50) addLine(sma(candles, 50), "#ffa726", 2);
+    if (overlays?.sma20) addLine(sma(displayCandles, 20), "#42a5f5", 2);
+    if (overlays?.sma50) addLine(sma(displayCandles, 50), "#ffa726", 2);
     if (overlays?.bollinger) {
-      const bb = bollinger(candles, 20, 2);
+      const bb = bollinger(displayCandles, 20, 2);
       addLine(bb.upper, "#ab47bc", 1, 2);
       addLine(bb.middle, "#ab47bc", 1, 0);
       addLine(bb.lower, "#ab47bc", 1, 2);
     }
-  }, [candles, overlays?.sma20, overlays?.sma50, overlays?.bollinger]);
+  }, [displayCandles, overlays?.sma20, overlays?.sma50, overlays?.bollinger]);
+
+  // Lazy-load older candles when the user scrolls near the left edge.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !onLoadMore) return;
+
+    const handler = async (range: LogicalRange | null) => {
+      if (!range) return;
+      if (fetchingMoreRef.current || reachedOldestRef.current) return;
+      // Trigger when within ~5 bars of the start of loaded data.
+      if (range.from > 5) return;
+      const oldest = candlesRef.current[0];
+      if (!oldest) return;
+
+      fetchingMoreRef.current = true;
+      try {
+        const older = await onLoadMore(oldest.time);
+        if (!older || older.length === 0) {
+          reachedOldestRef.current = true;
+          return;
+        }
+        // Drop any duplicate or future bars and keep ascending order.
+        const cutoff = oldest.time;
+        const cleaned = older
+          .filter((c) => c.time < cutoff)
+          .sort((a, b) => a.time - b.time);
+        if (cleaned.length === 0) {
+          reachedOldestRef.current = true;
+          return;
+        }
+        // Capture the current visible range so the next render can shift
+        // it forward by the number of prepended bars and preserve the view.
+        const visible = chart.timeScale().getVisibleLogicalRange();
+        if (visible) {
+          pendingRangeShiftRef.current = {
+            range: visible,
+            shift: cleaned.length,
+          };
+        }
+        setDisplayCandles((prev) => [...cleaned, ...prev]);
+      } finally {
+        fetchingMoreRef.current = false;
+      }
+    };
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handler);
+    return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handler);
+    };
+  }, [onLoadMore]);
 
   function downloadScreenshot() {
     const chart = chartRef.current;
@@ -252,7 +354,7 @@ export function CandlestickChart({ candles, overlays, loading, symbol }: Props) 
           로딩 중...
         </div>
       )}
-      {!loading && candles.length === 0 && (
+      {!loading && displayCandles.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-secondary)] pointer-events-none">
           데이터가 없습니다
         </div>

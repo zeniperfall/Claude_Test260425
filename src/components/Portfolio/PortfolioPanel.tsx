@@ -56,8 +56,12 @@ export function PortfolioPanel() {
       quantity: q,
       avgCost: c,
     });
-    setQty("");
-    setCost("");
+    // Defer the input clears to a microtask so React commits the upsert
+    // before the form inputs change — keeps DOM stable for click handling.
+    Promise.resolve().then(() => {
+      setQty("");
+      setCost("");
+    });
   }
 
   return (
@@ -88,7 +92,7 @@ export function PortfolioPanel() {
           />
           <button
             onClick={handleAdd}
-            disabled={!selected || !qty || !cost}
+            disabled={!selected}
             className="px-2 py-1 rounded text-xs bg-[var(--accent)] text-white hover:opacity-90 disabled:bg-[var(--bg-3)] disabled:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:hover:opacity-100"
             aria-label="포트폴리오에 추가"
           >
