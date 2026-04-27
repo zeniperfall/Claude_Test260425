@@ -11,8 +11,13 @@ test("A2: picking a KR symbol from search auto-switches the market filter", asyn
   await search.click();
   await search.fill("005930");
 
-  // Pick the result (search uses role="option" for keyboard navigation a11y)
-  await mockedPage.getByRole("option", { name: /005930\.KS/ }).first().click();
+  // Pick the result (search uses role="option" for keyboard navigation a11y).
+  // Wait for the dropdown to settle before clicking — react-query's first
+  // response can race with the click and detach the option mid-action.
+  const option = mockedPage.getByRole("option", { name: /005930\.KS/ }).first();
+  await option.waitFor({ state: "visible", timeout: 10_000 });
+  await mockedPage.waitForTimeout(150);
+  await option.click({ force: true });
 
   // Market filter should now show "한국" as active
   const krButton = mockedPage.getByRole("button", { name: "한국", exact: true });

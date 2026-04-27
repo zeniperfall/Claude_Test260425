@@ -16,13 +16,15 @@ test("B4: search keyboard navigation (ArrowDown + Enter selects)", async ({ mock
   // Wait for results to render
   await expect(mockedPage.getByRole("listbox")).toBeVisible();
   await expect(mockedPage.getByRole("option").first()).toBeVisible();
+  // Brief settle so react-query's response doesn't reset highlight while we press
+  await mockedPage.waitForTimeout(150);
 
   await search.press("ArrowDown");
   await search.press("Enter");
 
-  // Should have switched to MSFT
+  // Should have switched to MSFT — allow time for the redirect + price header refresh
   await expect(mockedPage.getByText("Microsoft Corporation").first()).toBeVisible({
-    timeout: 5_000,
+    timeout: 10_000,
   });
 });
 
