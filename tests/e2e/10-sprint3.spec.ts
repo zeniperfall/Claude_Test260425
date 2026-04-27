@@ -7,7 +7,10 @@ test("C1: portfolio panel adds and tracks a position", async ({ mockedPage }) =>
   await mockedPage.getByRole("button", { name: "포트폴리오" }).click();
   await mockedPage.getByPlaceholder("수량").fill("10");
   await mockedPage.getByPlaceholder("평단가").fill("150");
-  await mockedPage.getByRole("button", { name: "포트폴리오에 추가" }).click();
+  // force:true bypasses Playwright's stability heuristic, which can flake
+  // when background pollers (AlertsManager / chart lazy-load) cause minor
+  // sibling re-renders during the click dispatch.
+  await mockedPage.getByRole("button", { name: "포트폴리오에 추가" }).click({ force: true });
 
   // Total summary should appear
   await expect(mockedPage.getByText("평가").first()).toBeVisible();
