@@ -22,7 +22,10 @@ test("B4: search keyboard navigation (ArrowDown + Enter selects)", async ({ mock
   await search.press("ArrowDown");
   await search.press("Enter");
 
-  // Should have switched to MSFT — allow time for the redirect + price header refresh
+  // Wait for SymbolUrlSync to redirect — confirms handlePick fired and
+  // setSelected took effect before checking on the (eventually-loaded)
+  // PriceHeader text.
+  await mockedPage.waitForURL(/\/stock\/MSFT/, { timeout: 10_000 });
   await expect(mockedPage.getByText("Microsoft Corporation").first()).toBeVisible({
     timeout: 10_000,
   });
