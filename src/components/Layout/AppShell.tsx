@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { GitCompareArrows, BellRing, Menu, X, PanelRightOpen, PanelRightClose, Grid3x3 } from "lucide-react";
 import { useAlertsStore } from "@/store/useAlertsStore";
@@ -15,7 +15,7 @@ import { MarketFilter } from "@/components/Search/MarketFilter";
 import { PriceHeader } from "@/components/Detail/PriceHeader";
 import { RightPanel } from "@/components/Detail/RightPanel";
 import { useAppStore } from "@/store/useAppStore";
-import { DEFAULT_SYMBOLS } from "@/lib/markets";
+import { DEFAULT_SYMBOLS, timeframeToRange } from "@/lib/markets";
 import type { Candle } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +54,24 @@ export function AppShell() {
     enabled: !!selected,
     staleTime: 30_000,
   });
+
+  // Lazy-load older candles when the user scrolls past the leftmost bar.
+  const handleLoadMore = useCallback(
+    async (beforeTime: number): Promise<Candle[]> => {
+      if (!selected) return [];
+      const { interval } = timeframeToRange(timeframe);
+      const params = new URLSearchParams({
+        symbol: selected.symbol,
+        before: String(beforeTime),
+        interval,
+      });
+      const r = await fetch(`/api/candles/extend?${params}`);
+      if (!r.ok) return [];
+      const j = (await r.json()) as { candles: Candle[] };
+      return j.candles;
+    },
+    [selected, timeframe],
+  );
 
   return (
     <div className="h-screen flex flex-col bg-[var(--bg-1)]">
@@ -150,6 +168,7 @@ export function AppShell() {
               overlays={overlays}
               loading={isFetching}
               symbol={selected?.symbol}
+              onLoadMore={handleLoadMore}
             />
           </div>
         </main>
