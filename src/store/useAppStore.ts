@@ -16,6 +16,12 @@ export interface OverlayPrefs {
   bollinger?: boolean;
 }
 
+export interface SubchartPrefs {
+  volume: boolean;
+  rsi: boolean;
+  macd: boolean;
+}
+
 interface AppState {
   market: Market;
   setMarket: (m: Market) => void;
@@ -28,6 +34,9 @@ interface AppState {
 
   overlays: OverlayPrefs;
   setOverlays: (next: OverlayPrefs) => void;
+
+  subcharts: SubchartPrefs;
+  setSubcharts: (next: SubchartPrefs) => void;
 
   watchlist: WatchlistItem[];
   addToWatchlist: (item: WatchlistItem) => void;
@@ -56,6 +65,9 @@ export const useAppStore = create<AppState>()(
       overlays: { sma20: false, sma50: false, bollinger: false },
       setOverlays: (next) => set({ overlays: next }),
 
+      subcharts: { volume: true, rsi: false, macd: false },
+      setSubcharts: (next) => set({ subcharts: next }),
+
       watchlist: defaultWatchlist,
       addToWatchlist: (item) => {
         if (get().watchlist.some((w) => w.symbol === item.symbol)) return;
@@ -73,6 +85,7 @@ export const useAppStore = create<AppState>()(
         market: s.market,
         timeframe: s.timeframe,
         overlays: s.overlays,
+        subcharts: s.subcharts,
       }),
     },
   ),

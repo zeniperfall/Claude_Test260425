@@ -7,6 +7,7 @@ import { useAlertsStore } from "@/store/useAlertsStore";
 import { CandlestickChart } from "@/components/Chart/CandlestickChart";
 import { TimeframeSelector } from "@/components/Chart/TimeframeSelector";
 import { OverlayToggle } from "@/components/Chart/OverlayToggle";
+import { SubchartToggle } from "@/components/Chart/SubchartToggle";
 import { AuthButton } from "@/components/Auth/AuthButton";
 import { AuthSync } from "@/components/Auth/AuthSync";
 import { Watchlist } from "@/components/Watchlist/Watchlist";
@@ -27,6 +28,8 @@ export function AppShell() {
   const setTimeframe = useAppStore((s) => s.setTimeframe);
   const overlays = useAppStore((s) => s.overlays);
   const setOverlays = useAppStore((s) => s.setOverlays);
+  const subcharts = useAppStore((s) => s.subcharts);
+  const setSubcharts = useAppStore((s) => s.setSubcharts);
   const triggeredCount = useAlertsStore((s) =>
     s.alerts.filter((a) => a.triggered).length,
   );
@@ -155,9 +158,12 @@ export function AppShell() {
         {/* Main area */}
         <main className="flex flex-col overflow-hidden">
           <PriceHeader />
-          <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-[var(--border)] gap-3 overflow-x-auto">
+          <div className="flex items-center px-3 sm:px-4 py-2 border-b border-[var(--border)] gap-3 overflow-x-auto">
             <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+            <span className="hidden sm:block w-px h-4 bg-[var(--border)]" />
             <OverlayToggle value={overlays} onChange={setOverlays} />
+            <span className="hidden sm:block w-px h-4 bg-[var(--border)]" />
+            <SubchartToggle value={subcharts} onChange={setSubcharts} />
             <div className="text-[11px] text-[var(--text-secondary)] ml-auto whitespace-nowrap">
               {selected?.symbol ?? ""} · {timeframe}
             </div>
@@ -166,6 +172,7 @@ export function AppShell() {
             <CandlestickChart
               candles={candles ?? []}
               overlays={overlays}
+              subcharts={subcharts}
               loading={isFetching}
               symbol={selected?.symbol}
               onLoadMore={handleLoadMore}
